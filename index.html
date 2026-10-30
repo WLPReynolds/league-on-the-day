@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>League on the Day</title>
+  <meta name="description" content="Where any English league club stood in the table on any day since 1888.">
+  <meta name="theme-color" content="#1f3d2b">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="styles.css?v=1.0.0">
+</head>
+<body>
+  <header class="masthead">
+    <h1>League on the Day</h1>
+    <p class="strap">Where they stood, and who they'd just played</p>
+  </header>
+
+  <main>
+    <form id="query" class="query" autocomplete="off">
+      <label class="field">
+        <span>Club</span>
+        <input id="team" name="team" list="teams" placeholder="e.g. Plymouth Argyle" required>
+        <datalist id="teams"></datalist>
+      </label>
+      <label class="field">
+        <span>Date</span>
+        <input id="date" name="date" type="date" required>
+      </label>
+      <label class="check">
+        <input id="include" type="checkbox" checked>
+        <span>Count games played on this date</span>
+      </label>
+      <button type="submit">Show table</button>
+    </form>
+
+    <p id="status" class="status" role="status" aria-live="polite">Loading results…</p>
+
+    <section id="result" hidden>
+      <div id="summary" class="summary"></div>
+      <div id="notes"></div>
+      <nav id="divisions" class="divisions" aria-label="Divisions"></nav>
+      <div id="table"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Tiers 1–4 from 1888: <a href="https://github.com/seanelvidge/England-football-results">Sean Elvidge's England football results</a>, built on <a href="https://github.com/jalapic/engsoccerdata">James Curley's engsoccerdata</a>. Tier 5 from 1999/00 to 2018/19 and tier 6 from 2012/13 to 2018/19 from engsoccerdata.</p>
+    <p>Tables are worked out from results. Points deductions aren't included.</p>
+    <p class="ver">v1.0.0</p>
+  </footer>
+
+  <script type="module" src="src/app.js?v=1.0.0"></script>
+</body>
+</html>
