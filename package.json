@@ -1,0 +1,17 @@
+{
+  "name": "league-on-the-day",
+  "version": "1.0.0",
+  "description": "Where any English league club stood in the table on any day since 1888, and their last result.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "fetch-data": "sh scripts/fetch-data.sh",
+    "build-data": "node scripts/build-data.mjs data-raw/EnglandLeagueResults.csv data-raw/england_nonleague.csv",
+    "data": "npm run fetch-data && npm run build-data",
+    "start": "npx --yes http-server -c-1 -p 8080 ."
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
