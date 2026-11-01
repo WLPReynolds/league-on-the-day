@@ -1,20 +1,25 @@
 import {
   buildTable, lastResult, teamDivision, seasonForDate, seasonNotes,
-  toDateNum, dateNumToIso, ordinal, tieBreaker,
+  toDateNum, dateNumToIso, ordinal, tieBreaker, positionTimeline, teamMatches,
 } from './league.js';
+import { seasonChart, historyChart } from './charts.js';
 
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.0.1';
 
 const $ = (id) => document.getElementById(id);
 const els = {
   form: $('query'), team: $('team'), teams: $('teams'), date: $('date'), include: $('include'),
   status: $('status'), result: $('result'), summary: $('summary'), notes: $('notes'),
-  divisions: $('divisions'), table: $('table'),
+  divisions: $('divisions'), table: $('table'), views: $('views'),
+  season: $('view-season'), history: $('view-history'), results: $('view-results'),
 };
+const VIEWS = ['table', 'season', 'history', 'results'];
+const DEFAULT_TEAM = 'Manchester City';
 
 let index = null;
 const seasonCache = new Map();
-const state = { team: '', date: '', include: true, division: null };
+const state = { team: '', date: '', include: true, division: null, view: 'table', histPick: null, seasonPick: null };
+let historyData = null;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -54,11 +59,13 @@ function readHash() {
   if (p.get('team')) state.team = p.get('team');
   if (p.get('date')) state.date = p.get('date');
   if (p.get('inc')) state.include = p.get('inc') !== '0';
+  if (VIEWS.includes(p.get('view'))) state.view = p.get('view');
 }
 
 function writeHash() {
   const p = new URLSearchParams({ team: state.team, date: state.date });
   if (!state.include) p.set('inc', '0');
+  if (state.view !== 'table') p.set('view', state.view);
   history.replaceState(null, '', `#${p}`);
 }
 
@@ -199,10 +206,15 @@ async function show() {
   state.lastSeason = sd.season;
   state.ownDivision = div;
   state.sd = sd;
+  state.teamIdx = teamIdx;
+  state.seasonIdx = seasonIdx;
+  state.seasonPick = null;
+  state.histPick = null;
   renderDivisions();
   renderTable();
   setStatus('');
   els.result.hidden = false;
+  await renderView();
 }
 
 function gdText(row, season) {
@@ -241,6 +253,273 @@ function renderTable() {
     </table></div>`;
 }
 
+// ---- Views: Table / Season / History / Results -------------------------------------------
+
+const shortDate = (n) => {
+  const [y, m, d] = dateNumToIso(n).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
+  });
+};
+const chartWidth = (el) => Math.max(280, Math.floor(el.clientWidth || els.result.clientWidth || 340));
+const outcomeWord = { W: 'won', D: 'drew', L: 'lost' };
+
+/** The latest season is still being played if its last result is from August to April. */
+function isLive(s) {
+  if (s !== index.seasons.length - 1) return false;
+  const month = Math.floor(index.seasons[s].to / 100) % 100;
+  return month >= 8 || month <= 4;
+}
+
+async function renderView() {
+  for (const b of els.views.querySelectorAll('button')) b.setAttribute('aria-selected', b.dataset.view === state.view);
+  $('view-table').hidden = state.view !== 'table';
+  els.season.hidden = state.view !== 'season';
+  els.history.hidden = state.view !== 'history';
+  els.results.hidden = state.view !== 'results';
+  if (state.view === 'season') renderSeason();
+  if (state.view === 'history') await renderHistory();
+  if (state.view === 'results') renderResults();
+}
+
+/** Jump to a date (and optionally a view), as if picked in the form. */
+function goTo(dateNum, view) {
+  els.date.value = dateNumToIso(dateNum);
+  if (view) state.view = view;
+  state.division = null;
+  show().catch(fail);
+  if (view === 'table') els.summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const notCovered = (what) => `<p class="empty">${esc(state.team)} weren't in a covered division in
+  ${shortSeason(state.sd.season)}, so there's no ${what} for this season. Try the History view.</p>`;
+
+// Season graph ------------------------------------------------------------------------------
+
+let seasonCache2 = { key: '', points: null };
+function seasonData() {
+  const { sd, teamIdx, ownDivision } = state;
+  const key = `${sd.season}|${teamIdx}`;
+  if (seasonCache2.key !== key) {
+    const matches = teamMatches(sd, teamIdx);
+    seasonCache2 = {
+      key,
+      matches,
+      points: positionTimeline(sd, ownDivision, teamIdx),
+      outcomes: new Map(matches.map((mt) => [mt.date, mt.outcome])),
+    };
+  }
+  return seasonCache2;
+}
+
+function renderSeason() {
+  const { sd, ownDivision } = state;
+  if (ownDivision === null) { els.season.innerHTML = notCovered('season graph'); return; }
+  const { points, outcomes, matches } = seasonData();
+  if (!points.length) { els.season.innerHTML = '<p class="empty">No games yet this season.</p>'; return; }
+  const played = points.filter((p) => p.played);
+  if (state.seasonPick === null) {
+    // Start on the club's last game up to the chosen date.
+    const d = toDateNum(state.date);
+    const i = played.findLastIndex((p) => p.date <= d);
+    state.seasonPick = i >= 0 ? i : 0;
+  }
+  const pick = played[state.seasonPick];
+  const match = matches.find((mt) => mt.date === pick.date);
+  const final = points.at(-1);
+
+  els.season.innerHTML = `
+    <h3 class="divname">${esc(sd.divisions[ownDivision].name)} ${shortSeason(sd.season)}</h3>
+    <p class="sub">Position after each day's games${isLive(state.seasonIdx)
+      ? ', so far' : ` · finished ${ordinal(final.pos)} of ${final.size}`}. Drag or tap the graph.</p>
+    <div class="readout">
+      <p><b>${formatDate(pick.date)}</b>: ${ordinal(pick.pos)} of ${pick.size}, ${pick.pts} pts from ${pick.p}</p>
+      ${match ? `<p class="meta"><span class="res res-${match.outcome}">${outcomeWord[match.outcome]}</span>
+        ${match.for}–${match.against} ${match.venue === 'H' ? 'v' : 'at'} ${esc(match.opponent)}</p>` : ''}
+      <button type="button" class="small" data-goto-table="${pick.date}">Table on this date</button>
+    </div>
+    <div class="chart" data-chart="season"></div>
+    <p class="legend"><span class="key res-W"></span>Won <span class="key res-D"></span>Drew
+      <span class="key res-L"></span>Lost <span class="key marker"></span>Selected date</p>`;
+  const box = els.season.querySelector('.chart');
+  const { svg, xs } = seasonChart({
+    points, outcomes, picked: state.seasonPick, marker: toDateNum(state.date), width: chartWidth(box),
+  });
+  box.innerHTML = svg;
+  scrub.season = { xs, pick: (i) => { if (i !== state.seasonPick) { state.seasonPick = i; renderSeason(); } } };
+}
+
+// Results list ------------------------------------------------------------------------------
+
+function renderResults() {
+  const { sd, ownDivision } = state;
+  if (ownDivision === null) { els.results.innerHTML = notCovered('results list'); return; }
+  const { points, matches } = seasonData();
+  const posOn = new Map(points.map((p) => [p.date, p]));
+  const d = toDateNum(state.date);
+  const current = matches.findLast((mt) => mt.date <= d);
+  const tally = { W: 0, D: 0, L: 0 };
+  matches.forEach((mt) => tally[mt.outcome]++);
+  const rows = matches.map((mt) => `
+    <tr class="${mt === current ? 'me' : ''}" data-goto-table="${mt.date}">
+      <td class="dt">${shortDate(mt.date)}</td>
+      <td class="ha">${mt.venue}</td>
+      <td class="t">${esc(mt.opponent)}</td>
+      <td class="sc"><span class="res res-${mt.outcome}">${mt.outcome}</span> ${mt.for}–${mt.against}</td>
+      <td class="n">${posOn.get(mt.date) ? ordinal(posOn.get(mt.date).pos) : ''}</td>
+    </tr>`).join('');
+  els.results.innerHTML = `
+    <h3 class="divname">${esc(state.team)} ${shortSeason(sd.season)}</h3>
+    <p class="sub">${esc(sd.divisions[ownDivision].name)} · P ${matches.length} · W ${tally.W} D ${tally.D} L ${tally.L}.
+      Tap a game for the table that day.</p>
+    <div class="scroll"><table class="results">
+      <thead><tr><th class="dt">Date</th><th class="ha"></th><th class="t">Opponent</th><th class="sc">Score</th><th class="n">Pos</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+// History graph -----------------------------------------------------------------------------
+
+async function loadHistory() {
+  if (!historyData) {
+    historyData = fetch('data/history.json').then((r) => {
+      if (!r.ok) throw new Error("Couldn't load the history data");
+      return r.json();
+    });
+  }
+  return historyData;
+}
+
+async function renderHistory() {
+  const hist = await loadHistory();
+  const rows = hist.teams[state.team];
+  if (!rows) { els.history.innerHTML = '<p class="empty">No seasons in the data for this club.</p>'; return; }
+  if (state.histPick === null) {
+    // Start on the season being looked at, or the nearest one before it.
+    const i = rows.findLastIndex((r) => r[0] <= state.seasonIdx);
+    state.histPick = i >= 0 ? i : 0;
+  }
+  const r = rows[state.histPick];
+  const [s, divId, pos, p, w, d, l, gf, ga, pts] = r;
+  const entry = index.seasons[s];
+  const div = entry.divisions[divId];
+  const live = isLive(s);
+  const size = hist.sizes[s][divId];
+
+  // What happened next: promoted, relegated, or out of the covered divisions.
+  let next = '';
+  const nr = rows[state.histPick + 1];
+  if (!live && index.seasons[s + 1]) {
+    const nextName = shortSeason(index.seasons[s + 1].season);
+    if (nr && nr[0] === s + 1) {
+      const nt = index.seasons[s + 1].divisions[nr[1]].tier;
+      if (nt < div.tier) next = `Promoted for ${nextName}.`;
+      else if (nt > div.tier) next = `Relegated for ${nextName}.`;
+    } else {
+      next = `Not in a covered division in ${nextName}.`;
+    }
+  }
+  const gap = Number.isFinite(index.seasons[s + 1]?.from) && Math.floor(index.seasons[s + 1].from / 10000) - Math.floor(entry.to / 10000) > 1;
+  if (gap && next) next = `${next.slice(0, -1)} (after the break in league football).`;
+  const champions = pos === 1 && !live ? (div.tier === 1 ? 'Champions of England. ' : 'Champions. ') : '';
+
+  const titles = rows.filter((x) => x[2] === 1 && x[0] !== hist.inProgress && index.seasons[x[0]].divisions[x[1]].tier === 1).length;
+  const tiersSeen = [...new Set(rows.map((x) => index.seasons[x[0]].divisions[x[1]].tier))].sort();
+
+  els.history.innerHTML = `
+    <h3 class="divname">${esc(state.team)}: every season</h3>
+    <p class="sub">${rows.length} seasons in the data, in tier${tiersSeen.length > 1 ? 's' : ''} ${tiersSeen.join(', ')}${titles ? `; ${titles} top-flight title${titles > 1 ? 's' : ''}` : ''}.
+      Final position each season, with the tiers (T1, T2…) stacked top to bottom. Drag or tap the graph.</p>
+    <div class="readout">
+      <p><b>${shortSeason(entry.season)}</b>: ${live ? 'currently ' : ''}${ordinal(pos)} of ${size} in ${esc(div.name)} (tier ${div.tier})</p>
+      <p class="meta">P ${p} · W ${w} D ${d} L ${l} · ${gf}–${ga} · ${pts} pts${live ? ' so far' : ''}</p>
+      ${champions || next ? `<p class="meta">${champions}${esc(next)}</p>` : ''}
+      <div class="step">
+        <button type="button" data-hist-step="-1" ${state.histPick ? '' : 'disabled'}>‹</button>
+        <button type="button" data-hist-open="table" data-season="${s}">${live ? 'Table' : 'Final table'}</button>
+        <button type="button" data-hist-open="season" data-season="${s}">Graph</button>
+        <button type="button" data-hist-open="results" data-season="${s}">Results</button>
+        <button type="button" data-hist-step="1" ${state.histPick < rows.length - 1 ? '' : 'disabled'}>›</button>
+      </div>
+    </div>
+    <div class="chart" data-chart="history"></div>
+    <p class="legend"><span class="key line"></span>Final position <span class="key title"></span>League champions
+      <span class="key band"></span>Alternate tiers shaded</p>
+    <details class="seasons" ${state.histListOpen ? 'open' : ''}><summary>All seasons as a list</summary>
+      <div class="scroll"><table class="results">
+        <thead><tr><th class="dt">Season</th><th class="t">Division</th><th class="n">Pos</th><th class="n">Pts</th></tr></thead>
+        <tbody>${rows.map((x, i) => `<tr class="${i === state.histPick ? 'me' : ''}" data-hist-pick="${i}">
+          <td class="dt">${shortSeason(index.seasons[x[0]].season)}</td>
+          <td class="t">${esc(index.seasons[x[0]].divisions[x[1]].name.replace(/^(Football League|EFL) /, ''))}</td>
+          <td class="n">${ordinal(x[2])}</td><td class="n">${x[9]}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </details>`;
+  const box = els.history.querySelector('.chart');
+  const { svg, xs } = historyChart({
+    rows, seasons: index.seasons, sizes: hist.sizes, picked: state.histPick,
+    inProgress: hist.inProgress, width: chartWidth(box),
+  });
+  box.innerHTML = svg;
+  scrub.history = { xs, pick: (i) => { if (i !== state.histPick) { state.histPick = i; renderHistory(); } } };
+}
+
+/** Open a season picked in the history graph: its last day, in the chosen view. */
+function openSeason(s, view) {
+  const entry = index.seasons[s];
+  goTo(Math.min(entry.to, index.dataTo), view);
+}
+
+// Tap and drag on a chart picks the nearest point. Listeners sit on the views (which persist)
+// because the SVG inside is redrawn on every pick.
+const scrub = { season: null, history: null };
+function onChartPointer(e) {
+  const box = e.target.closest('.chart');
+  if (!box) return;
+  const sc = scrub[box.dataset.chart];
+  if (!sc || !sc.xs.length) return;
+  if (e.type === 'pointerdown') box.setPointerCapture?.(e.pointerId);
+  else if (!e.buttons && e.pointerType !== 'mouse') return;
+  const px = e.clientX - box.getBoundingClientRect().left;
+  let best = 0;
+  sc.xs.forEach((x, i) => { if (Math.abs(x - px) < Math.abs(sc.xs[best] - px)) best = i; });
+  sc.pick(best);
+}
+for (const el of [els.season, els.history]) {
+  el.addEventListener('pointerdown', onChartPointer);
+  el.addEventListener('pointermove', (e) => { if (e.buttons) onChartPointer(e); });
+}
+
+els.views.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-view]');
+  if (!b) return;
+  state.view = b.dataset.view;
+  writeHash();
+  renderView().catch(fail);
+});
+for (const el of [els.season, els.results]) {
+  el.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-goto-table]');
+    if (t) goTo(Number(t.dataset.gotoTable), 'table');
+  });
+}
+els.history.addEventListener('click', (e) => {
+  const st = e.target.closest('[data-hist-step]');
+  if (st) { state.histPick += Number(st.dataset.histStep); renderHistory().catch(fail); return; }
+  const op = e.target.closest('[data-hist-open]');
+  if (op) { openSeason(Number(op.dataset.season), op.dataset.histOpen); return; }
+  const row = e.target.closest('[data-hist-pick]');
+  if (row) { state.histPick = Number(row.dataset.histPick); renderHistory().catch(fail); }
+});
+els.history.addEventListener('toggle', (e) => { state.histListOpen = e.target.open; }, true);
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (state.view === 'season') renderSeason();
+    if (state.view === 'history') renderHistory().catch(fail);
+  }, 150);
+});
+
 els.form.addEventListener('submit', (e) => { e.preventDefault(); state.division = null; show().catch(fail); });
 els.include.addEventListener('change', () => { if (!els.result.hidden) show().catch(fail); });
 els.divisions.addEventListener('click', (e) => {
@@ -276,11 +555,11 @@ async function init() {
   els.date.min = dateNumToIso(index.seasons[0].from);
   els.date.max = dateNumToIso(index.dataTo);
   readHash();
-  els.team.value = state.team;
+  els.team.value = state.team || DEFAULT_TEAM;
   els.date.value = state.date || dateNumToIso(index.dataTo);
   els.include.checked = state.include;
   setStatus(`Results up to ${formatDate(index.dataTo, false)}.`);
-  if (state.team && state.date) await show();
+  await show();
 }
 
 init().catch(fail);

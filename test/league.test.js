@@ -118,6 +118,35 @@ test('Leeds City 1919/20: record passes to Port Vale', () => {
   assert.equal(end.find((r) => r.team === 'Port Vale').p, 42);
 });
 
+test('position timeline through a season', () => {
+  const sd = load('1998-1999');
+  const city = sd.teams.indexOf('Manchester City');
+  const div = L.teamDivision(sd, city);
+  const tl = L.positionTimeline(sd, div, city);
+  assert.equal(tl.filter((p) => p.played).length, 46);
+  assert.ok(tl.every((p) => p.size === 24 && p.pos >= 1 && p.pos <= 24));
+  // Final point matches the final table.
+  const final = L.buildTable(sd, div, '1999-12-31').find((r) => r.team === 'Manchester City');
+  assert.deepEqual([tl.at(-1).pos, tl.at(-1).pts], [final.pos, final.pts]);
+  assert.equal(L.teamMatches(sd, city).length, 46);
+});
+
+test('tier bands stack divisions, parallel divisions share one', () => {
+  const b = L.tierBands([{ tier: 1 }, { tier: 2 }, { tier: 3 }, { tier: 3 }], [22, 22, 22, 21]);
+  assert.deepEqual(b.bands.map((x) => [x.tier, x.top, x.size]), [[1, 0, 22], [2, 22, 22], [3, 44, 22]]);
+  assert.equal(b.offset(3), 44);
+  assert.equal(b.total, 66);
+});
+
+test('history: Manchester City 1997/98 to 2001/02', () => {
+  const hist = JSON.parse(readFileSync(new URL('../data/history.json', import.meta.url)));
+  assert.equal(hist.sizes.length, index.seasons.length);
+  const seq = hist.teams['Manchester City']
+    .filter(([s]) => index.seasons[s].season >= '1997' && index.seasons[s].season < '2002')
+    .map(([s, d, pos]) => [index.seasons[s].divisions[d].tier, pos]);
+  assert.deepEqual(seq, [[2, 22], [3, 3], [2, 2], [1, 18], [2, 1]]);
+});
+
 test('version is the same everywhere', () => {
   const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
   const v = JSON.parse(read('package.json')).version;

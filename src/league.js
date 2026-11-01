@@ -183,3 +183,56 @@ export function ordinal(n) {
   if (v >= 11 && v <= 13) return `${n}th`;
   return n + ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th');
 }
+
+/**
+ * A team's position after every matchday of its division in a season, for the season graph.
+ * Returns [{ date, pos, size, p, pts, played }] in date order; `played` marks the team's own match days.
+ */
+export function positionTimeline(seasonData, divisionId, teamIdx) {
+  const matches = seasonData.matches.filter((m) => m[1] === divisionId);
+  const sub = { ...seasonData, matches };
+  const playedOn = new Set(matches.filter((m) => m[2] === teamIdx || m[3] === teamIdx).map((m) => m[0]));
+  const dates = [...new Set(matches.map((m) => m[0]))];
+  const out = [];
+  for (const date of dates) {
+    const table = buildTable(sub, divisionId, date);
+    const row = table.find((r) => r.teamIdx === teamIdx);
+    if (!row) continue; // expunged
+    out.push({ date, pos: row.pos, size: table.length, p: row.p, pts: row.pts, played: playedOn.has(date) });
+  }
+  return out;
+}
+
+/** A team's league matches in a season: [{ date, divisionId, venue, opponent, for, against, outcome }]. */
+export function teamMatches(seasonData, teamIdx) {
+  return seasonData.matches
+    .filter((m) => m[2] === teamIdx || m[3] === teamIdx)
+    .map(([date, divisionId, h, a, hg, ag]) => {
+      const home = h === teamIdx;
+      const f = home ? hg : ag;
+      const g = home ? ag : hg;
+      return {
+        date, divisionId, venue: home ? 'H' : 'A', opponent: seasonData.teams[home ? a : h],
+        for: f, against: g, outcome: f > g ? 'W' : f < g ? 'L' : 'D',
+      };
+    });
+}
+
+/**
+ * Stacks a season's divisions into one "overall position" scale for the history graph:
+ * tier 1 takes places 1..n1, tier 2 the next n2, and so on. Parallel divisions in a tier
+ * (Third Division North/South) share a band as tall as the bigger of them.
+ * `divisions` is [{ tier }] and `sizes` the matching club counts.
+ * Returns { bands: [{ tier, top, size }], offset(tier), total }.
+ */
+export function tierBands(divisions, sizes) {
+  const tierSize = new Map();
+  divisions.forEach((d, i) => tierSize.set(d.tier, Math.max(tierSize.get(d.tier) || 0, sizes[i] || 0)));
+  const bands = [];
+  let top = 0;
+  for (const tier of [...tierSize.keys()].sort((a, b) => a - b)) {
+    bands.push({ tier, top, size: tierSize.get(tier) });
+    top += tierSize.get(tier);
+  }
+  return { bands, offset: (tier) => bands.find((b) => b.tier === tier)?.top ?? null, total: top };
+}
