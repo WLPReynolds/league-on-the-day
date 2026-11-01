@@ -158,3 +158,59 @@ tr.me td.t .link { font-weight: 700; }
 .foot { margin-top: 32px; padding-top: 12px; padding-bottom: 24px; border-top: 1px solid var(--rule); font-size: .8rem; color: var(--muted); }
 .foot a { color: inherit; }
 .ver { font-variant-numeric: tabular-nums; }
+
+/* View tabs */
+.views { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 14px 0 4px; border: 1px solid var(--green); border-radius: 8px; overflow: hidden; }
+.views button {
+  min-height: 42px; background: var(--card); color: var(--green); border: 0; border-left: 1px solid var(--green);
+  font: 600 .9rem var(--sans); cursor: pointer;
+}
+.views button:first-child { border-left: 0; }
+.views button[aria-selected="true"] { background: var(--green); color: var(--paper); }
+.sub { margin: 0 0 8px; color: var(--muted); font-size: .85rem; }
+.empty { color: var(--muted); font-size: .9rem; margin: 12px 0; }
+
+.readout { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+.readout p { margin: 0 0 2px; }
+.readout .step { margin-top: 8px; }
+.readout .step button[data-hist-step] { flex: 0 0 44px; font-size: 1.1rem; }
+button.small {
+  margin-top: 8px; min-height: 36px; padding: 0 12px; background: transparent; color: var(--green);
+  border: 1px solid var(--rule); border-radius: 6px; font: 600 .85rem var(--sans); cursor: pointer;
+}
+
+/* Charts */
+.chart { width: 100%; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: crosshair; }
+.chart svg { display: block; overflow: visible; }
+.chart .grid { stroke: var(--rule); stroke-width: 1; }
+.chart .tick { stroke: var(--muted); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font: 11px var(--sans); font-variant-numeric: tabular-nums; }
+.chart .tier { font-weight: 600; }
+.chart .line { fill: none; stroke: var(--green); stroke-width: 2; stroke-linejoin: round; }
+.chart .dot { fill: var(--green); stroke: var(--paper); stroke-width: 2; }
+.chart .dot.res-W { fill: var(--win); } .chart .dot.res-D { fill: var(--draw); } .chart .dot.res-L { fill: var(--loss); }
+.chart .dot.title { fill: var(--draw); stroke-width: 1.5; }
+.chart .dot.live { fill: var(--paper); stroke: var(--green); stroke-width: 1.5; }
+.chart .marker { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.chart .cross { stroke: var(--ink); stroke-width: 1; opacity: .35; }
+.chart .picked-ring { fill: none; stroke: var(--ink); stroke-width: 2; }
+.chart .band-1 { fill: var(--green-soft); }
+.chart .band-0 { fill: var(--card); }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: .78rem; color: var(--muted); margin: 6px 0 10px; }
+.legend .key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: -8px; vertical-align: -1px; }
+.legend .key.res-W { background: var(--win); } .legend .key.res-D { background: var(--draw); } .legend .key.res-L { background: var(--loss); }
+.legend .key.title { background: var(--draw); }
+.legend .key.line { width: 16px; height: 2px; border-radius: 0; background: var(--green); vertical-align: 3px; }
+.legend .key.marker { width: 0; height: 12px; border-radius: 0; border-left: 2px dashed var(--muted); }
+.legend .key.band { width: 14px; border-radius: 2px; background: var(--green-soft); border: 1px solid var(--rule); }
+
+/* Results and season lists */
+table.results td, table.results th { text-align: left; }
+table.results td.n, table.results th.n { text-align: right; }
+table.results td.dt { white-space: nowrap; color: var(--muted); }
+table.results td.ha { color: var(--muted); }
+table.results td.sc { white-space: nowrap; }
+table.results tbody tr { cursor: pointer; }
+table.results tbody tr:hover td { background: var(--green-soft); }
+.seasons { margin: 8px 0; }
+.seasons summary { cursor: pointer; font-weight: 600; color: var(--green); padding: 8px 0; }
