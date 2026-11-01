@@ -67,13 +67,16 @@ export function seasonChart({ points, outcomes, picked, marker, width, height = 
  * Final position in every season, with the divisions stacked into one scale so moving
  * between tiers shows as a jump across a band. rows: history.json rows for one club.
  */
-export function historyChart({ rows, seasons, sizes, picked, inProgress, width, height = 260 }) {
-  const m = { l: 26, r: 10, t: 8, b: 24 };
-  const w = width - m.l - m.r;
-  const h = height - m.t - m.b;
+export function historyChart({ rows, seasons, sizes, picked, inProgress, width, height = 260, perYear = 14 }) {
+  // The plot scrolls sideways when the history is long: at least `perYear` px per year, so a
+  // tap lands on the season meant. Tier labels go in a separate fixed gutter (GUTTER px wide).
+  const m = { l: 12, r: 12, t: 8, b: 24 };
   const year = (s) => parseInt(seasons[s].season, 10);
   const y0 = year(rows[0][0]) - 0.5;
   const y1 = year(rows.at(-1)[0]) + 0.5;
+  width = Math.max(width - GUTTER, Math.ceil((y1 - y0) * perYear) + m.l + m.r);
+  const w = width - m.l - m.r;
+  const h = height - m.t - m.b;
   const x = (yr) => m.l + ((yr - y0) / (y1 - y0)) * w;
 
   // Seasons in range, with their stacked divisions.
@@ -89,6 +92,7 @@ export function historyChart({ rows, seasons, sizes, picked, inProgress, width, 
 
   let g = '';
   const labelled = new Set();
+  let labels = '';
   for (const c of cols) {
     const xa = x(year(c.s) - 0.5);
     const xb = x(year(c.s) + 0.5);
@@ -96,12 +100,14 @@ export function historyChart({ rows, seasons, sizes, picked, inProgress, width, 
       g += `<rect class="band band-${b.tier % 2}" x="${xa}" y="${y(b.top)}" width="${xb - xa + 0.5}" height="${y(b.top + b.size) - y(b.top)}"/>`;
     }
   }
-  for (const c of cols) {
+  // Tier numbers in the fixed gutter, level with the bands of the picked season (the one
+  // scrolled into view); tiers that season lacks use the band where they first appear.
+  const pickedCol = picked != null && rows[picked] ? cols[rows[picked][0] - cols[0].s] : null;
+  for (const c of [pickedCol, ...cols].filter(Boolean)) {
     for (const b of c.bands) {
       if (labelled.has(b.tier)) continue;
       labelled.add(b.tier);
-      // Tier number in the left gutter, level with the band where it first appears.
-      g += `<text class="axis tier" x="${m.l - 6}" y="${(y(b.top) + y(b.top + b.size)) / 2 + 4}" text-anchor="end">T${b.tier}</text>`;
+      labels += `<text class="axis tier" x="${GUTTER - 6}" y="${(y(b.top) + y(b.top + b.size)) / 2 + 4}" text-anchor="end">T${b.tier}</text>`;
     }
   }
 
@@ -137,6 +143,10 @@ export function historyChart({ rows, seasons, sizes, picked, inProgress, width, 
     svg: `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img"
       aria-label="Final league position in every season">${g}${pick}
       <path class="line" d="${path}"/>${dots}</svg>`,
+    gutter: `<svg viewBox="0 0 ${GUTTER} ${height}" width="${GUTTER}" height="${height}" aria-hidden="true">${labels}</svg>`,
     xs: pts.map((p) => p.cx),
+    width,
   };
 }
+
+export const GUTTER = 28;

@@ -4,7 +4,7 @@ import {
 } from './league.js';
 import { seasonChart, historyChart } from './charts.js';
 
-export const APP_VERSION = '1.0.1';
+export const APP_VERSION = '1.0.2';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -390,7 +390,9 @@ async function loadHistory() {
   return historyData;
 }
 
-async function renderHistory() {
+async function renderHistory({ center = true } = {}) {
+  const oldStrip = els.history.querySelector('.strip');
+  const keepScroll = oldStrip ? oldStrip.scrollLeft : null;
   const hist = await loadHistory();
   const rows = hist.teams[state.team];
   if (!rows) { els.history.innerHTML = '<p class="empty">No seasons in the data for this club.</p>'; return; }
@@ -429,7 +431,7 @@ async function renderHistory() {
   els.history.innerHTML = `
     <h3 class="divname">${esc(state.team)}: every season</h3>
     <p class="sub">${rows.length} seasons in the data, in tier${tiersSeen.length > 1 ? 's' : ''} ${tiersSeen.join(', ')}${titles ? `; ${titles} top-flight title${titles > 1 ? 's' : ''}` : ''}.
-      Final position each season, with the tiers (T1, T2…) stacked top to bottom. Drag or tap the graph.</p>
+      Final position each season, with the tiers (T1, T2…) stacked top to bottom. Swipe to scroll, tap a season.</p>
     <div class="readout">
       <p><b>${shortSeason(entry.season)}</b>: ${live ? 'currently ' : ''}${ordinal(pos)} of ${size} in ${esc(div.name)} (tier ${div.tier})</p>
       <p class="meta">P ${p} · W ${w} D ${d} L ${l} · ${gf}–${ga} · ${pts} pts${live ? ' so far' : ''}</p>
@@ -442,7 +444,7 @@ async function renderHistory() {
         <button type="button" data-hist-step="1" ${state.histPick < rows.length - 1 ? '' : 'disabled'}>›</button>
       </div>
     </div>
-    <div class="chart" data-chart="history"></div>
+    <div class="chart hscroll" data-chart="history"><div class="strip"></div><div class="gutter"></div></div>
     <p class="legend"><span class="key line"></span>Final position <span class="key title"></span>League champions
       <span class="key band"></span>Alternate tiers shaded</p>
     <details class="seasons" ${state.histListOpen ? 'open' : ''}><summary>All seasons as a list</summary>
@@ -455,12 +457,17 @@ async function renderHistory() {
       </table></div>
     </details>`;
   const box = els.history.querySelector('.chart');
-  const { svg, xs } = historyChart({
+  const { svg, gutter, xs } = historyChart({
     rows, seasons: index.seasons, sizes: hist.sizes, picked: state.histPick,
     inProgress: hist.inProgress, width: chartWidth(box),
   });
-  box.innerHTML = svg;
-  scrub.history = { xs, pick: (i) => { if (i !== state.histPick) { state.histPick = i; renderHistory(); } } };
+  box.querySelector('.strip').innerHTML = svg;
+  box.querySelector('.gutter').innerHTML = gutter;
+  const strip = box.querySelector('.strip');
+  // Keep the scroll where the finger left it after a tap; otherwise bring the pick to the middle.
+  if (!center && keepScroll !== null) strip.scrollLeft = keepScroll;
+  else if (xs[state.histPick] != null) strip.scrollLeft = xs[state.histPick] - strip.clientWidth / 2;
+  histXs = xs;
 }
 
 /** Open a season picked in the history graph: its last day, in the chosen view. */
@@ -471,7 +478,8 @@ function openSeason(s, view) {
 
 // Tap and drag on a chart picks the nearest point. Listeners sit on the views (which persist)
 // because the SVG inside is redrawn on every pick.
-const scrub = { season: null, history: null };
+const scrub = { season: null };
+let histXs = [];
 function onChartPointer(e) {
   const box = e.target.closest('.chart');
   if (!box) return;
@@ -484,10 +492,8 @@ function onChartPointer(e) {
   sc.xs.forEach((x, i) => { if (Math.abs(x - px) < Math.abs(sc.xs[best] - px)) best = i; });
   sc.pick(best);
 }
-for (const el of [els.season, els.history]) {
-  el.addEventListener('pointerdown', onChartPointer);
-  el.addEventListener('pointermove', (e) => { if (e.buttons) onChartPointer(e); });
-}
+els.season.addEventListener('pointerdown', onChartPointer);
+els.season.addEventListener('pointermove', (e) => { if (e.buttons) onChartPointer(e); });
 
 els.views.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');
@@ -507,6 +513,15 @@ els.history.addEventListener('click', (e) => {
   if (st) { state.histPick += Number(st.dataset.histStep); renderHistory().catch(fail); return; }
   const op = e.target.closest('[data-hist-open]');
   if (op) { openSeason(Number(op.dataset.season), op.dataset.histOpen); return; }
+  // The history graph scrolls sideways, so a swipe pans it and only a tap (click) picks a season.
+  const svg = e.target.closest('.strip svg');
+  if (svg && histXs.length) {
+    const px = e.clientX - svg.getBoundingClientRect().left;
+    let best = 0;
+    histXs.forEach((x, i) => { if (Math.abs(x - px) < Math.abs(histXs[best] - px)) best = i; });
+    if (best !== state.histPick) { state.histPick = best; renderHistory({ center: false }).catch(fail); }
+    return;
+  }
   const row = e.target.closest('[data-hist-pick]');
   if (row) { state.histPick = Number(row.dataset.histPick); renderHistory().catch(fail); }
 });
@@ -516,7 +531,7 @@ window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     if (state.view === 'season') renderSeason();
-    if (state.view === 'history') renderHistory().catch(fail);
+    if (state.view === 'history') renderHistory({ center: false }).catch(fail);
   }, 150);
 });
 

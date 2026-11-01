@@ -214,3 +214,9 @@ table.results tbody tr { cursor: pointer; }
 table.results tbody tr:hover td { background: var(--green-soft); }
 .seasons { margin: 8px 0; }
 .seasons summary { cursor: pointer; font-weight: 600; color: var(--green); padding: 8px 0; }
+
+/* History graph scrolls sideways; tier labels stay pinned on the left */
+.chart.hscroll { position: relative; cursor: default; touch-action: auto; }
+.chart.hscroll .strip { overflow-x: auto; overflow-y: hidden; margin-left: 28px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.chart.hscroll .strip svg { cursor: pointer; }
+.chart.hscroll .gutter { position: absolute; left: 0; top: 0; width: 28px; pointer-events: none; }
