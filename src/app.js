@@ -4,7 +4,7 @@ import {
 } from './league.js';
 import { seasonChart, historyChart } from './charts.js';
 
-export const APP_VERSION = '1.0.2';
+export const APP_VERSION = '1.0.3';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -29,6 +29,11 @@ function formatDate(n, withDay = true) {
   return dt.toLocaleDateString('en-GB', {
     ...(withDay ? { weekday: 'short' } : {}), day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
   });
+}
+
+/** Today's date in the UK, as yyyy-mm-dd. */
+function todayIso() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
 }
 
 const shortSeason = (s) => `${s.slice(0, 4)}/${s.slice(7, 9)}`;
@@ -142,7 +147,10 @@ async function show() {
   // Which point in time the tables describe.
   const d = toDateNum(state.date);
   let context;
-  if (status === 'finished') {
+  if (d > index.dataTo && isLive(seasonIdx)) {
+    // Today (or a recent day) in a season still going: the data stops a little short of it.
+    context = `${shortSeason(entry.season)} season. Latest results in the data: up to ${formatDate(index.dataTo, false)}.`;
+  } else if (status === 'finished') {
     const nextSeason = index.seasons[seasonIdx + 1];
     const gapYears = nextSeason ? Math.floor(nextSeason.from / 10000) - Math.floor(entry.to / 10000) : 0;
     context = gapYears > 1
@@ -568,10 +576,10 @@ async function init() {
   index = await fetch('data/index.json').then((r) => r.json());
   els.teams.innerHTML = Object.keys(index.teams).map((t) => `<option value="${esc(t)}">`).join('');
   els.date.min = dateNumToIso(index.seasons[0].from);
-  els.date.max = dateNumToIso(index.dataTo);
+  els.date.max = todayIso();
   readHash();
   els.team.value = state.team || DEFAULT_TEAM;
-  els.date.value = state.date || dateNumToIso(index.dataTo);
+  els.date.value = state.date || todayIso();
   els.include.checked = state.include;
   setStatus(`Results up to ${formatDate(index.dataTo, false)}.`);
   await show();
