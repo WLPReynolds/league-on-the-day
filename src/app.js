@@ -4,7 +4,7 @@ import {
 } from './league.js';
 import { seasonChart, historyChart } from './charts.js';
 
-export const APP_VERSION = '1.0.3';
+export const APP_VERSION = '1.0.4';
 
 const $ = (id) => document.getElementById(id);
 const els = {
