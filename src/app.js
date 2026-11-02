@@ -4,7 +4,7 @@ import {
 } from './league.js';
 import { seasonChart, historyChart } from './charts.js';
 
-export const APP_VERSION = '1.0.4';
+export const APP_VERSION = '1.0.5';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -582,6 +582,10 @@ async function init() {
   els.date.value = state.date || todayIso();
   els.include.checked = state.include;
   setStatus(`Results up to ${formatDate(index.dataTo, false)}.`);
+  // Footer: how far the results go, beside the version. Updates when the daily job adds results.
+  const [ty, tm, td] = dateNumToIso(index.dataTo).split('-').map(Number);
+  $('data-to').textContent = ` · results up to ${new Date(Date.UTC(ty, tm - 1, td))
+    .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}`;
   await show();
 }
 
