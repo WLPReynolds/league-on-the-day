@@ -25,7 +25,7 @@ Tables are calculated from results using the rules of the time: 2 points for a w
 npm run data   # download the CSVs into data-raw/ and rebuild data/
 ```
 
-The build writes `data/index.json` (seasons and clubs), one `data/seasons/YYYY-YYYY.json` per season, and `data/history.json` (every club's final position each season, for the History graph; `npm run build-history` rebuilds just that). Re-run it to pick up new results for the current season.
+The build writes `data/index.json` (seasons and clubs), one `data/seasons/YYYY-YYYY.json` per season, and `data/history.json` (every club's final position each season, for the History graph; `npm run build-history` rebuilds just that). A GitHub Action (`.github/workflows/update-data.yml`) does this every morning and commits the data if there are new results; it can also be run by hand from the repo's Actions tab.
 
 ## Develop
 

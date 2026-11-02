@@ -1,0 +1,42 @@
+# Fetches the latest results every morning, rebuilds data/, and commits it if anything changed.
+# GitHub Pages then redeploys on its own. Can also be run by hand from the Actions tab.
+name: Update results data
+
+on:
+  schedule:
+    - cron: '17 5 * * *'   # 05:17 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Download results and rebuild data
+        run: npm run data
+      - name: Check the data
+        run: npm test
+      - name: Commit if changed
+        run: |
+          # index.json carries a "generated" date that changes every run, so only commit
+          # when the results themselves have changed.
+          if git diff --quiet -- data/seasons; then
+            echo "No new results."
+            exit 0
+          fi
+          to=$(node -p "String(require('./data/index.json').dataTo).replace(/(\d{4})(\d\d)(\d\d)/, '\$3/\$2/\$1')")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git commit -m "Data: results up to $to"
+          git push
