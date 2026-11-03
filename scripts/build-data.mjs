@@ -105,14 +105,29 @@ for (const r of parseCsv(readFileSync(leagueCsv, 'utf8'))) {
   n1++;
 }
 
+// engsoccerdata dates the August–December matches of the 2000/01 and 2001/02 Conference a
+// year late (e.g. 2001-08-19 for a match played on 2000-08-19). No season has matches from
+// July to December of its second year, so any such date is moved back a year.
+function fixNonLeagueDate(dateNum, startYear) {
+  const y = Math.floor(dateNum / 10000);
+  const m = Math.floor(dateNum / 100) % 100;
+  return y === startYear + 1 && m >= 7 ? dateNum - 10000 : dateNum;
+}
+
 let n2 = 0;
+let fixedDates = 0;
 for (const r of parseCsv(readFileSync(nonLeagueCsv, 'utf8'))) {
   const tier = parseInt(r.tier, 10);
   if (tier !== 5 && tier !== 6) continue;
   if (!r.Date || r.Date === 'NA') continue; // undated seasons can't produce as-of-date tables
   const startYear = parseInt(r.Season, 10);
   add(seasonLabel(startYear), {
-    date: parseInt(r.Date.replaceAll('-', ''), 10),
+    date: (() => {
+      const raw = parseInt(r.Date.replaceAll('-', ''), 10);
+      const fixed = fixNonLeagueDate(raw, startYear);
+      if (fixed !== raw) fixedDates++;
+      return fixed;
+    })(),
     division: nonLeagueName(r.division, startYear),
     tier,
     home: club(r.home), away: club(r.visitor),
@@ -120,6 +135,7 @@ for (const r of parseCsv(readFileSync(nonLeagueCsv, 'utf8'))) {
   });
   n2++;
 }
+if (fixedDates) console.log(`Non-league: moved ${fixedDates} matches dated a year late back a year`);
 
 const outDir = join(root, 'data');
 rmSync(join(outDir, 'seasons'), { recursive: true, force: true });

@@ -1,14 +1,14 @@
 // Service worker: app shell is cached per version; results data is served from cache
 // and refreshed in the background (past seasons never change; the current one does).
-const VERSION = '1.0.5';
+const VERSION = '1.0.6';
 const SHELL = `lotd-shell-${VERSION}`;
 const DATA = 'lotd-data';
 
 const SHELL_FILES = [
   './',
   'index.html',
-  'styles.css?v=1.0.5',
-  'src/app.js?v=1.0.5',
+  'styles.css?v=1.0.6',
+  'src/app.js?v=1.0.6',
   'src/league.js',
   'src/charts.js',
   'manifest.webmanifest',
