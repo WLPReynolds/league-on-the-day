@@ -165,6 +165,45 @@ test('Conference 2000/01 dates are in the right year', () => {
   assert.ok(Math.min(...dates) >= 20000801 && Math.max(...dates) <= 20010630);
 });
 
+const finalRow = (s, team) => {
+  const sd = load(s);
+  const t = sd.teams.indexOf(team);
+  return { sd, row: (date) => L.buildTable(sd, L.teamDivision(sd, t), date).find((r) => r.team === team) };
+};
+
+test('deductions: Leeds 2007/08 start on -15 and finish on 76', () => {
+  const { row } = finalRow('2007-2008', 'Leeds United');
+  assert.equal(row('2007-08-01').pts, -15);
+  assert.equal(row('2008-06-30').pts, 76);
+  assert.equal(L.netAdjustment(row('2008-06-30')), -15);
+});
+
+test('deductions: Everton 2023/24 -10, then -6 on appeal, then -8', () => {
+  const { row } = finalRow('2023-2024', 'Everton');
+  assert.equal(L.netAdjustment(row('2023-12-01')), -10);
+  assert.equal(L.netAdjustment(row('2024-03-01')), -6);
+  assert.equal(L.netAdjustment(row('2024-06-30')), -8);
+  assert.equal(row('2024-06-30').pts, 40);
+});
+
+test('deductions: final-table-only and after-the-season cases', () => {
+  // Wigan 2019/20: -12 applied after the last game, relegating them on 47 points.
+  const wigan = finalRow('2019-2020', 'Wigan Athletic').row;
+  assert.equal(L.netAdjustment(wigan('2020-07-01')), 0);
+  assert.equal(wigan('2020-08-31').pts, 47);
+  // Macclesfield 2019/20: -17 in all by the final table.
+  assert.equal(L.netAdjustment(finalRow('2019-2020', 'Macclesfield Town').row('2020-08-31')), -17);
+  // Luton 2008/09: -30 from the start, finished on 26.
+  assert.equal(finalRow('2008-2009', 'Luton Town').row('2009-06-30').pts, 26);
+});
+
+test('every deduction in the list is in the built data', async () => {
+  const { DEDUCTIONS } = await import('../scripts/deductions.mjs');
+  let n = 0;
+  for (const e of index.seasons) n += (load(e.file.slice(8, -5)).adjustments || []).length;
+  assert.equal(n, DEDUCTIONS.length);
+});
+
 test('version is the same everywhere', () => {
   const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
   const v = JSON.parse(read('package.json')).version;

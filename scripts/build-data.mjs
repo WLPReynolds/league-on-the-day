@@ -10,6 +10,7 @@
 //              matches carry dates are used (1999/00 onwards; tier 6 from 2012/13).
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { DEDUCTIONS } from './deductions.mjs';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -183,7 +184,29 @@ for (const season of [...bySeason.keys()].sort()) {
     matches: ms.map((m) => [m.date, divId.get(m.division), teamId.get(m.home), teamId.get(m.away), m.hg, m.ag]),
     events: (EVENTS[season] || []).map((e) => ({ ...e, team: teamId.get(e.team), to: e.to && teamId.get(e.to) })),
     notes: NOTES[season] || [],
+    adjustments: [],
   };
+  // Points deductions (see scripts/deductions.mjs). `date` is when the table first shows it;
+  // `on` is the date it was imposed, or 'start' / 'final' when that isn't a single known day.
+  const seasonTo = ms[ms.length - 1].date;
+  for (const [s, team, points, when, reason] of DEDUCTIONS) {
+    if (s !== season) continue;
+    const t = teamId.get(team);
+    const own = t === undefined ? [] : data.matches.filter((m) => m[2] === t || m[3] === t);
+    if (!own.length) throw new Error(`Deduction for ${team} in ${season}: club not in the results`);
+    const div = own[0][1];
+    let date, on;
+    if (when === 'start') { date = 0; on = 'start'; }
+    else if (when === 'final') {
+      date = Math.max(...data.matches.filter((m) => m[1] === div).map((m) => m[0]));
+      on = 'final';
+    } else {
+      on = parseInt(when.replaceAll('-', ''), 10);
+      date = Math.min(on, seasonTo); // imposed after the season: applies to the final table
+    }
+    data.adjustments.push({ team: t, points, date, on, reason });
+  }
+  data.adjustments.sort((a, b) => a.date - b.date);
   for (const e of data.events) {
     if (e.team === undefined || (e.type === 'takeover' && e.to === undefined)) throw new Error(`Bad event in ${season}`);
   }

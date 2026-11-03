@@ -1,10 +1,10 @@
 import {
   buildTable, lastResult, teamDivision, seasonForDate, seasonNotes,
-  toDateNum, dateNumToIso, ordinal, tieBreaker, positionTimeline, teamMatches,
+  toDateNum, dateNumToIso, ordinal, tieBreaker, positionTimeline, teamMatches, netAdjustment,
 } from './league.js';
 import { seasonChart, historyChart } from './charts.js';
 
-export const APP_VERSION = '1.0.6';
+export const APP_VERSION = '1.0.7';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -169,7 +169,8 @@ async function show() {
       html += `<h2 class="club">${esc(state.team)}</h2>
         <p class="pos"><span class="big">${ordinal(row.pos)}</span> of ${table.length}
         in ${esc(sd.divisions[div].name)}</p>
-        <p class="line">P ${row.p} · ${row.pts} pts · ${gdText(row, sd.season)}</p>`;
+        <p class="line">P ${row.p} · ${row.pts} pts · ${gdText(row, sd.season)}${netAdjustment(row)
+          ? ` · <span class="adj">${adjText(netAdjustment(row))}*</span>` : ''}</p>`;
     } else {
       html += `<h2 class="club">${esc(state.team)}</h2><p class="pos">Not in the table on this date (record expunged).</p>`;
     }
@@ -250,15 +251,32 @@ function renderTable() {
       <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
       <td class="fa">${r.gf}</td><td class="fa">${r.ga}</td>
       <td>${ga ? (Number.isFinite(r.gav) ? r.gav.toFixed(2) : '—') : (r.gd > 0 ? '+' : '') + r.gd}</td>
-      <td class="pts">${r.pts}</td>
+      <td class="pts">${r.pts}${r.adjustments ? '<span class="adj-mark">*</span>' : ''}</td>
     </tr>`).join('');
+  const notes = table.filter((r) => r.adjustments).map((r) => `<p class="footnote">* <b>${esc(r.team)}</b>:
+    ${r.adjustments.map((a) => esc(adjustmentNote(a))).join('; ')}${r.adjustments.length > 1 ? `. In total, ${esc(adjText(netAdjustment(r)))}` : ''}.</p>`).join('');
   els.table.innerHTML = `
     <h3 class="divname">${esc(sd.divisions[state.division].name)}</h3>
     <div class="scroll"><table>
       <thead><tr><th class="n">#</th><th class="t">Club</th><th>P</th><th>W</th><th>D</th><th>L</th>
         <th class="fa">F</th><th class="fa">A</th><th>${ga ? 'GAv' : 'GD'}</th><th class="pts">Pts</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table></div>`;
+    </table></div>${notes}`;
+}
+
+/** "10 points deducted" / "4 points restored" */
+function adjText(points) {
+  const n = Math.abs(points);
+  return `${n} point${n === 1 ? '' : 's'} ${points < 0 ? 'deducted' : 'restored'}`;
+}
+
+function adjustmentNote(a) {
+  let when;
+  if (a.on === 'start') when = 'from the start of the season';
+  else if (a.on === 'final') when = 'in the final table (date not known)';
+  else if (a.on > a.date) when = `on ${formatDate(a.on, false)}, after the season ended`;
+  else when = `on ${formatDate(a.on, false)}`;
+  return `${adjText(a.points)} ${when} (${a.reason})`;
 }
 
 // ---- Views: Table / Season / History / Results -------------------------------------------

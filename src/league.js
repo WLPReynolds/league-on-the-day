@@ -103,6 +103,15 @@ export function buildTable(seasonData, divisionId, date, { includeDate = true } 
     else { hr.d++; ar.d++; hr.pts++; ar.pts++; }
   }
 
+  // Points deductions (and any given back on appeal) in force by this date.
+  for (const a of seasonData.adjustments || []) {
+    if (includeDate ? a.date > d : a.date >= d) continue;
+    const r = rows.get(a.team);
+    if (!r) continue; // not in this division, or expunged
+    r.pts += a.points;
+    (r.adjustments ||= []).push(a);
+  }
+
   const tb = tieBreaker(seasonData.season);
   const table = [...rows.values()].map((r) => ({
     ...r,
@@ -177,6 +186,11 @@ export function lastResult(seasonData, teamIdx, date, { includeDate = true } = {
   };
 }
 
+/** Net points adjustment for a table row (negative for a deduction), 0 if none. */
+export function netAdjustment(row) {
+  return (row.adjustments || []).reduce((n, a) => n + a.points, 0);
+}
+
 /** "1st", "2nd", "23rd" … */
 export function ordinal(n) {
   const v = n % 100;
@@ -192,7 +206,12 @@ export function positionTimeline(seasonData, divisionId, teamIdx) {
   const matches = seasonData.matches.filter((m) => m[1] === divisionId);
   const sub = { ...seasonData, matches };
   const playedOn = new Set(matches.filter((m) => m[2] === teamIdx || m[3] === teamIdx).map((m) => m[0]));
-  const dates = [...new Set(matches.map((m) => m[0]))];
+  // Match days, plus days a deduction changed someone's points after the division started.
+  const teamsHere = new Set(matches.flatMap((m) => [m[2], m[3]]));
+  const adjDates = (seasonData.adjustments || [])
+    .filter((a) => teamsHere.has(a.team) && matches.length && a.date > matches[0][0])
+    .map((a) => a.date);
+  const dates = [...new Set([...matches.map((m) => m[0]), ...adjDates])].sort((a, b) => a - b);
   const out = [];
   for (const date of dates) {
     const table = buildTable(sub, divisionId, date);
