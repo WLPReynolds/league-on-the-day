@@ -147,6 +147,24 @@ test('history: Manchester City 1997/98 to 2001/02', () => {
   assert.deepEqual(seq, [[2, 22], [3, 3], [2, 2], [1, 18], [2, 1]]);
 });
 
+test('every season sits within its own years', () => {
+  // A season starting in year Y runs from July Y to June Y+1, except 2019/20 (Covid: to August 2020).
+  index.seasons.forEach((e, i) => {
+    const y = parseInt(e.season, 10);
+    const latest = e.season === '2019/2020' ? (y + 1) * 10000 + 831 : (y + 1) * 10000 + 630;
+    assert.ok(e.from >= y * 10000 + 701 && e.to <= latest, `${e.season}: ${e.from}–${e.to}`);
+    const next = index.seasons[i + 1];
+    if (next) assert.ok(e.to < next.from, `${e.season} overlaps ${next.season}`);
+  });
+});
+
+test('Conference 2000/01 dates are in the right year', () => {
+  const sd = load('2000-2001');
+  const div = sd.divisions.find((d) => d.name === 'Football Conference').id;
+  const dates = sd.matches.filter((m) => m[1] === div).map((m) => m[0]);
+  assert.ok(Math.min(...dates) >= 20000801 && Math.max(...dates) <= 20010630);
+});
+
 test('version is the same everywhere', () => {
   const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
   const v = JSON.parse(read('package.json')).version;

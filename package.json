@@ -1,6 +1,6 @@
 {
   "name": "league-on-the-day",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Where any English league club stood in the table on any day since 1888, and their last result.",
   "type": "module",
   "private": true,
