@@ -11,6 +11,9 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { DEDUCTIONS } from './deductions.mjs';
+import { zones, competitionNames } from './zones.mjs';
+import { EUROPE } from './europe.mjs';
+import { buildTable } from '../src/league.js';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,6 +66,9 @@ function nonLeagueName(code, startYear) {
 // are left alone.
 const SAME_CLUB = {
   'Accrington': 'Accrington Stanley',
+  // The non-league file calls Aldershot Town (formed 1992) "Aldershot", which is the name of
+  // the original club wound up in 1992. Use the new club's own name so the two stay separate.
+  'Aldershot': 'Aldershot Town',
   'Cheltenham': 'Cheltenham Town',
   'Macclesfield': 'Macclesfield Town',
   'Yeovil': 'Yeovil Town',
@@ -145,6 +151,7 @@ mkdirSync(join(outDir, 'seasons'), { recursive: true });
 const seasonsIndex = [];
 const teamSeasons = new Map(); // team -> [{ s: seasonIdx, t: tier, d: divisionName }]
 let latest = 0;
+const built = []; // season files, written once final-table outcomes are known
 
 for (const season of [...bySeason.keys()].sort()) {
   // Drop play-off games: the non-league file includes them from 2016/17, and a play-off
@@ -211,7 +218,7 @@ for (const season of [...bySeason.keys()].sort()) {
     if (e.team === undefined || (e.type === 'takeover' && e.to === undefined)) throw new Error(`Bad event in ${season}`);
   }
   const file = `seasons/${season.replace('/', '-')}.json`;
-  writeFileSync(join(outDir, file), JSON.stringify(data));
+  built.push({ file, data });
 
   const idx = seasonsIndex.length;
   const from = ms[0].date, to = ms[ms.length - 1].date;
@@ -229,6 +236,54 @@ for (const season of [...bySeason.keys()].sort()) {
 
 // teams: { name: [[seasonIdx, divisionId], ...] } — lets the app explain where a team was
 // in seasons, and spot seasons where they're outside the covered divisions.
+// Zones, and final-table outcomes that depend on the following season.
+// A club renamed on promotion still counts as the same club here.
+const RENAMED = { 'Stevenage Borough': 'Stevenage' };
+const tierBySeason = built.map(({ data }) => {
+  const m = new Map();
+  for (const [, dv, h, a] of data.matches) for (const t of [h, a]) m.set(data.teams[t], data.divisions[dv].tier);
+  return m;
+});
+built.forEach(({ data }, s) => {
+  const y = parseInt(data.season, 10);
+  const size = data.divisions.map((d) => new Set(data.matches.filter((m) => m[1] === d.id).flatMap((m) => [m[2], m[3]])).size);
+  data.zones = data.divisions.map((d) => zones(y, d.tier, size[d.id]));
+  data.competitions = competitionNames(y);
+  const next = tierBySeason[s + 1];
+  const playoffWinners = [];
+  if (next) {
+    const last = Math.max(...data.matches.map((m) => m[0]));
+    for (const d of data.divisions) {
+      const z = data.zones[d.id];
+      if (!z.po && !z.poDown) continue;
+      for (const r of buildTable(data, d.id, last)) {
+        const nt = next.get(RENAMED[r.team] || r.team);
+        if (nt === undefined) continue;
+        if (z.po && r.pos >= z.po[0] && r.pos <= z.po[1] && nt < d.tier) playoffWinners.push(r.teamIdx);
+        if (z.poDown && r.pos === z.poDown && nt === d.tier) playoffWinners.push(r.teamIdx); // stayed up
+      }
+    }
+  }
+  data.playoffWinners = playoffWinners;
+  const eu = EUROPE[data.season];
+  data.europe = {};
+  if (eu) {
+    for (const [comp, clubs] of Object.entries(eu)) {
+      for (const c of clubs) {
+        const t = data.teams.indexOf(c);
+        if (t < 0) throw new Error(`Europe ${data.season}: ${c} not in the results`);
+        data.europe[t] = comp;
+      }
+    }
+  }
+  if (y >= 1984 && y <= 1989) {
+    data.europeNote = y === 1989
+      ? 'Liverpool, the champions, were still banned from Europe for a further season after Heysel.'
+      : 'English clubs were banned from European competition after the Heysel disaster in May 1985, so no club qualified from this table.';
+  }
+  writeFileSync(join(outDir, built[s].file), JSON.stringify(data));
+});
+
 const teamsOut = {};
 for (const t of [...teamSeasons.keys()].sort()) teamsOut[t] = teamSeasons.get(t).map((x) => [x.s, x.d]);
 

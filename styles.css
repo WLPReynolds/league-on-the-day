@@ -228,3 +228,57 @@ th.pts, td.pts { padding-right: 10px; }
 .footnote { font-size: .8rem; color: var(--muted); margin: 8px 0 0; line-height: 1.4; }
 .footnote b { color: var(--ink); font-weight: 600; }
 .line .adj { color: var(--loss); }
+
+/* Promotion, relegation and European places. Colours validated for colour-blind separation;
+   play-off, re-election and test-match lines are dashed so they don't rely on colour alone. */
+:root {
+  --z-cl: #2e5fd6; --z-ecl: #05a08c; --z-uefa: #d0731a; --z-cwc: #b8327e;
+  --z-up: #2f8a4a; --z-po: #be8a12; --z-down: #c8332e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --z-cl: #4f7ee0; --z-ecl: #159f8a; --z-uefa: #d27023; --z-cwc: #c4478a;
+    --z-up: #3f9c5c; --z-po: #b88a2a; --z-down: #e0605a;
+  }
+}
+tr.l-up td { border-bottom: 2px solid var(--z-up); }
+tr.l-po td { border-bottom: 2px dashed var(--z-po); }
+tr.l-down td { border-bottom: 2px solid var(--z-down); }
+tr.l-reelect td { border-bottom: 2px dashed var(--z-down); }
+tr.l-test td { border-bottom: 2px dashed var(--muted); }
+tr.l-cl td { border-bottom: 2px solid var(--z-cl); }
+tr.l-el td { border-bottom: 2px solid var(--z-uefa); }
+tr.l-ecl td { border-bottom: 2px solid var(--z-ecl); }
+
+/* Final table: a tint across the row and a strip at its left edge (the strip survives the
+   highlight on your own club's row). */
+tr.q-EC td { background: color-mix(in srgb, var(--z-cl) 14%, transparent); }
+tr.q-CWC td { background: color-mix(in srgb, var(--z-cwc) 14%, transparent); }
+tr.q-UEFA td { background: color-mix(in srgb, var(--z-uefa) 14%, transparent); }
+tr.q-ECL td { background: color-mix(in srgb, var(--z-ecl) 14%, transparent); }
+tr.q-po td { background: color-mix(in srgb, var(--z-po) 16%, transparent); }
+tr.q-EC td.n { box-shadow: inset 4px 0 var(--z-cl); }
+tr.q-CWC td.n { box-shadow: inset 4px 0 var(--z-cwc); }
+tr.q-UEFA td.n { box-shadow: inset 4px 0 var(--z-uefa); }
+tr.q-ECL td.n { box-shadow: inset 4px 0 var(--z-ecl); }
+tr.q-po td.n { box-shadow: inset 4px 0 var(--z-po); }
+tr.me td { background: var(--green-soft); }
+
+.zone-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78rem; color: var(--muted); margin: 8px 0 0; }
+.key-item { display: inline-flex; align-items: center; gap: 6px; }
+.k-line { display: inline-block; width: 18px; height: 0; border-bottom: 2px solid; }
+.k-line.l-up { border-color: var(--z-up); }
+.k-line.l-po { border-bottom-style: dashed; border-color: var(--z-po); }
+.k-line.l-down { border-color: var(--z-down); }
+.k-line.l-reelect { border-bottom-style: dashed; border-color: var(--z-down); }
+.k-line.l-test { border-bottom-style: dashed; border-color: var(--muted); }
+.k-line.l-cl { border-color: var(--z-cl); }
+.k-line.l-el { border-color: var(--z-uefa); }
+.k-line.l-ecl { border-color: var(--z-ecl); }
+.k-fill { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+.k-fill.q-EC { background: var(--z-cl); }
+.k-fill.q-CWC { background: var(--z-cwc); }
+.k-fill.q-UEFA { background: var(--z-uefa); }
+.k-fill.q-ECL { background: var(--z-ecl); }
+.k-fill.q-po { background: var(--z-po); }
+.key-group { font-weight: 600; }

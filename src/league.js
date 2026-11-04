@@ -186,6 +186,38 @@ export function lastResult(seasonData, teamIdx, date, { includeDate = true } = {
   };
 }
 
+/** Whether every game in a division has been played by this date (the final table). */
+export function divisionFinished(seasonData, divisionId, date, { includeDate = true } = {}) {
+  const d = toDateNum(date);
+  let last = 0;
+  for (const m of seasonData.matches) if (m[1] === divisionId && m[0] > last) last = m[0];
+  return includeDate ? last <= d : last < d;
+}
+
+/**
+ * Lines to draw under table rows, as { rowNumber: lineType }, from a division's zones.
+ * Row numbers are 1-based places in the table (shared places don't move a line).
+ */
+export function zoneLines(z, n) {
+  const lines = {};
+  if (!z) return lines;
+  const at = (k, type) => { if (k > 0 && k < n && !lines[k]) lines[k] = type; };
+  // Bottom of the table first, so a line nearer the top never hides a relegation line.
+  at(n - z.down, 'down');
+  if (z.poDown) at(z.poDown - 1, 'po');
+  at(n - z.reelect, 'reelect');
+  at(n - z.testBottom, 'test');
+  at(z.testTop, 'test');
+  at(z.up, 'up');
+  if (z.po) at(z.po[1], 'po');
+  if (z.eu) {
+    at(z.eu.cl, 'cl');
+    if (z.eu.el) at(z.eu.cl + z.eu.el, 'el');
+    if (z.eu.ecl) at(z.eu.cl + z.eu.el + z.eu.ecl, 'ecl');
+  }
+  return lines;
+}
+
 /** Net points adjustment for a table row (negative for a deduction), 0 if none. */
 export function netAdjustment(row) {
   return (row.adjustments || []).reduce((n, a) => n + a.points, 0);

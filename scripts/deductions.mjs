@@ -67,7 +67,7 @@ export const DEDUCTIONS = [
   ['2012/2013', 'Coventry City', -10, '2013-03-28', 'entering administration'],
   ['2012/2013', 'Portsmouth', -10, '2013-04-19', 'leaving administration'],
   ['2013/2014', 'Coventry City', -10, 'start', 'leaving administration without a CVA'],
-  ['2013/2014', 'Aldershot', -10, 'start', 'entering administration'],
+  ['2013/2014', 'Aldershot Town', -10, 'start', 'entering administration'],
   ['2013/2014', 'AFC Wimbledon', -3, 'final', 'fielding an ineligible player'],
   ['2014/2015', 'Rotherham United', -3, 'final', 'fielding an ineligible player'],
   ['2015/2016', 'Bury', -3, 'final', 'fielding an ineligible player'],
