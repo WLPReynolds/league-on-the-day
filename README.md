@@ -19,6 +19,8 @@ Opens on Manchester City by default. Below the summary, four views:
 
 Tables are calculated from results using the rules of the time: 2 points for a win until 1980/81, goal average until 1975/76 then goal difference. Points deductions (`scripts/deductions.mjs`) apply from the day they were imposed, including changes on appeal; where the date isn't known they apply to the final table only. Tiers 1–4 are covered in full (pre-1996 from a single source), tier 5 in part. Expunged records (Wigan Borough 1931, Accrington Stanley 1962) and Leeds City's 1919 takeover by Port Vale are applied from the date they happened.
 
+Tables show promotion, play-off, relegation and re-election lines for each season's rules (`scripts/zones.mjs`), and the top flight's European places by league position. On the final table, clubs that actually qualified for Europe (from 1969/70, `scripts/europe.mjs`; Intertoto routes left out) and play-off winners are shaded.
+
 ## Data
 
 ```sh

@@ -204,6 +204,42 @@ test('every deduction in the list is in the built data', async () => {
   assert.equal(n, DEDUCTIONS.length);
 });
 
+test('zones: 1980s rules, play-off era, and this season', async () => {
+  const { zones } = await import('../scripts/zones.mjs');
+  assert.deepEqual([zones(1983, 1, 22).down, zones(1983, 2, 22).up, zones(1983, 2, 22).down,
+    zones(1983, 3, 24).up, zones(1983, 3, 24).down, zones(1983, 4, 24).up, zones(1983, 4, 24).reelect],
+  [3, 3, 3, 3, 4, 4, 4]);
+  assert.deepEqual(zones(1986, 1, 22).poDown, 19);
+  assert.deepEqual(zones(2025, 2, 24).po, [3, 6]);
+  assert.deepEqual(zones(2026, 2, 24).po, [3, 8]);
+  assert.equal(zones(1986, 1, 22).eu, null); // Heysel ban
+  assert.deepEqual(zones(2024, 1, 20).eu, { cl: 5, el: 1, ecl: 1 });
+});
+
+test('zone lines: relegation never hidden by a line above it', () => {
+  const lines = L.zoneLines({ up: 0, po: null, poDown: 19, down: 3, reelect: 0, testTop: 0, testBottom: 0, eu: { cl: 1, el: 0, ecl: 0 } }, 22);
+  assert.deepEqual(lines, { 19: 'down', 18: 'po', 1: 'cl' });
+});
+
+test('final tables: play-off winners and European qualifiers', () => {
+  const sd = load('2012-2013');
+  assert.deepEqual(sd.playoffWinners.map((t) => sd.teams[t]).sort(),
+    ['Bradford City', 'Crystal Palace', 'FC Halifax Town', 'Newport County', 'Salisbury', 'Yeovil Town']);
+  assert.equal(sd.europe[sd.teams.indexOf('Wigan Athletic')], 'UEFA');
+  assert.equal(sd.competitions.UEFA, 'Europa League');
+  const charlton = load('1986-1987');
+  assert.ok(charlton.playoffWinners.includes(charlton.teams.indexOf('Charlton Athletic')));
+  assert.match(load('1986-1987').europeNote, /Heysel/);
+  assert.ok(L.divisionFinished(sd, 0, '2013-06-30'));
+  assert.ok(!L.divisionFinished(sd, 0, '2013-03-01'));
+});
+
+test('Aldershot Town is kept separate from the original Aldershot', () => {
+  const t = index.teams;
+  assert.ok(t['Aldershot'].every(([s]) => parseInt(index.seasons[s].season, 10) < 1992));
+  assert.ok(t['Aldershot Town'].some(([s]) => index.seasons[s].season === '2007/2008'));
+});
+
 test('version is the same everywhere', () => {
   const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
   const v = JSON.parse(read('package.json')).version;

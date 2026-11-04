@@ -1,10 +1,11 @@
 import {
   buildTable, lastResult, teamDivision, seasonForDate, seasonNotes,
   toDateNum, dateNumToIso, ordinal, tieBreaker, positionTimeline, teamMatches, netAdjustment,
+  divisionFinished, zoneLines,
 } from './league.js';
 import { seasonChart, historyChart } from './charts.js';
 
-export const APP_VERSION = '1.0.7';
+export const APP_VERSION = '1.0.8';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -244,8 +245,20 @@ function renderTable() {
   const { sd } = state;
   const table = buildTable(sd, state.division, state.date, { includeDate: state.include });
   const ga = tieBreaker(sd.season) === 'ga';
-  const rows = table.map((r) => `
-    <tr class="${r.team === state.team ? 'me' : ''}">
+  // Promotion/relegation/European lines, and on the final table the clubs that actually
+  // qualified for Europe or won the play-offs.
+  const z = sd.zones?.[state.division];
+  const lines = zoneLines(z, table.length);
+  const final = divisionFinished(sd, state.division, state.date, { includeDate: state.include });
+  const comps = sd.competitions || {};
+  const shade = (r) => {
+    if (!final) return '';
+    if (sd.europe?.[r.teamIdx]) return `q-${sd.europe[r.teamIdx]}`;
+    if (sd.playoffWinners?.includes(r.teamIdx)) return 'q-po';
+    return '';
+  };
+  const rows = table.map((r, i) => `
+    <tr class="${[r.team === state.team ? 'me' : '', lines[i + 1] ? `l-${lines[i + 1]}` : '', shade(r)].join(' ').trim()}">
       <td class="n">${r.pos}</td>
       <td class="t"><button type="button" class="link" data-team="${esc(r.team)}">${esc(r.team)}</button></td>
       <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
@@ -255,13 +268,35 @@ function renderTable() {
     </tr>`).join('');
   const notes = table.filter((r) => r.adjustments).map((r) => `<p class="footnote">* <b>${esc(r.team)}</b>:
     ${r.adjustments.map((a) => esc(adjustmentNote(a))).join('; ')}${r.adjustments.length > 1 ? `. In total, ${esc(adjText(netAdjustment(r)))}` : ''}.</p>`).join('');
+  // Key: only what this table shows.
+  const used = new Set(Object.values(lines));
+  const shaded = new Set(final ? table.map(shade).filter(Boolean) : []);
+  const lineLabel = {
+    cl: comps.EC, el: comps.UEFA, ecl: comps.ECL, up: 'Promotion', po: 'Play-offs',
+    down: 'Relegation', reelect: 'Re-election', test: 'Test matches',
+  };
+  const fillLabel = {
+    'q-EC': comps.EC, 'q-CWC': comps.CWC, 'q-UEFA': comps.UEFA, 'q-ECL': comps.ECL, 'q-po': 'Play-off winners',
+  };
+  const keyItems = [
+    ...['cl', 'el', 'ecl', 'up', 'po', 'test', 'reelect', 'down'].filter((k) => used.has(k))
+      .map((k) => `<span class="key-item"><span class="k-line l-${k}"></span>${esc(lineLabel[k])}</span>`),
+    ...(['q-EC', 'q-CWC', 'q-UEFA', 'q-ECL'].some((k) => shaded.has(k)) ? ['<span class="key-group">Qualified for:</span>'] : []),
+    ...['q-EC', 'q-CWC', 'q-UEFA', 'q-ECL', 'q-po'].filter((k) => shaded.has(k))
+      .map((k) => `<span class="key-item"><span class="k-fill ${k}"></span>${esc(fillLabel[k])}</span>`),
+  ];
+  const zoneNote = [
+    z?.eu && !final ? 'European places by league position; cup winners can change who qualifies.' : '',
+    final && z?.eu !== undefined && sd.divisions[state.division].tier === 1 && sd.europeNote ? sd.europeNote : '',
+  ].filter(Boolean).map((t) => `<p class="footnote">${esc(t)}</p>`).join('');
+  const key = keyItems.length ? `<p class="zone-key">${keyItems.join('')}</p>` : '';
   els.table.innerHTML = `
     <h3 class="divname">${esc(sd.divisions[state.division].name)}</h3>
     <div class="scroll"><table>
       <thead><tr><th class="n">#</th><th class="t">Club</th><th>P</th><th>W</th><th>D</th><th>L</th>
         <th class="fa">F</th><th class="fa">A</th><th>${ga ? 'GAv' : 'GD'}</th><th class="pts">Pts</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table></div>${notes}`;
+    </table></div>${key}${zoneNote}${notes}`;
 }
 
 /** "10 points deducted" / "4 points restored" */
