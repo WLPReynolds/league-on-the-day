@@ -1,0 +1,28 @@
+# Temporary: downloads National League results from football-data.co.uk so they can be
+# checked before the data build uses them. Runs once when this branch is pushed.
+name: Fetch National League files (temporary)
+on:
+  push:
+    branches: [fetch-national-league]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download
+        run: |
+          mkdir -p fd-raw
+          for y in $(seq 5 26); do
+            code=$(printf '%02d%02d' $y $((y + 1)))
+            curl -fsSL -A "league-on-the-day data fetch" -o "fd-raw/EC_$code.csv" "https://www.football-data.co.uk/mmz4281/$code/EC.csv" || echo "missing $code"
+          done
+          ls -la fd-raw
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fd-raw
+          git commit -m "Downloaded National League files"
+          git push
