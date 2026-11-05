@@ -282,3 +282,14 @@ tr.me td { background: var(--green-soft); }
 .k-fill.q-ECL { background: var(--z-ecl); }
 .k-fill.q-po { background: var(--z-po); }
 .key-group { font-weight: 600; }
+
+/* Date field with a Today button beside it */
+.date-field { grid-column: 1 / -1; }
+.date-row { display: flex; gap: 8px; }
+.date-row input { flex: 1; min-width: 0; }
+.query .today {
+  flex: 0 0 auto; min-height: 44px; padding: 0 14px;
+  background: transparent; color: var(--green); border: 1px solid var(--green); border-radius: 6px;
+  font: 600 .95rem var(--sans); text-transform: none; letter-spacing: 0; cursor: pointer;
+}
+@media (min-width: 640px) { .date-field { grid-column: auto; } }
