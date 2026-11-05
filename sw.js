@@ -2,15 +2,15 @@
 // (revalidated, so the browser's own cache can't hand back a stale copy), and are saved for
 // offline use. Offline, the saved copies are used. Scripts and styles carry the version in
 // their URL, so those are served from the saved copy for this version.
-const VERSION = '1.0.8';
+const VERSION = '1.0.9';
 const SHELL = `lotd-shell-${VERSION}`;
 const DATA = 'lotd-data';
 
 const SHELL_FILES = [
   './',
   'index.html',
-  'styles.css?v=1.0.8',
-  'src/app.js?v=1.0.8',
+  'styles.css?v=1.0.9',
+  'src/app.js?v=1.0.9',
   'src/league.js',
   'src/charts.js',
   'manifest.webmanifest',

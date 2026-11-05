@@ -240,6 +240,24 @@ test('Aldershot Town is kept separate from the original Aldershot', () => {
   assert.ok(t['Aldershot Town'].some(([s]) => index.seasons[s].season === '2007/2008'));
 });
 
+test('National League from football-data.co.uk', () => {
+  const final = (season, club) => {
+    const sd = load(season);
+    const div = sd.divisions.find((d) => d.tier === 5).id;
+    return L.buildTable(sd, div, '2099-01-01').find((r) => r.team === club);
+  };
+  assert.deepEqual([final('2022-2023', 'Wrexham').pos, final('2022-2023', 'Wrexham').pts], [1, 111]);
+  assert.equal(final('2021-2022', 'Stockport County').pos, 1);
+  // Dover's 2020/21 record was expunged, and they started 2021/22 on -12.
+  assert.equal(final('2020-2021', 'Dover Athletic'), undefined);
+  assert.equal(L.netAdjustment(final('2021-2022', 'Dover Athletic')), -12);
+  // Short names are mapped, so clubs' histories join up across the League and non-league.
+  for (const club of ['Stockport County', 'Notts County', 'Hartlepool United', 'Oldham Athletic']) {
+    assert.ok(index.teams[club].some(([s, d]) => index.seasons[s].divisions[d].tier === 5 && parseInt(index.seasons[s].season, 10) >= 2019), club);
+  }
+  assert.ok(!index.teams['Stockport'] && !index.teams['Oldham']);
+});
+
 test('version is the same everywhere', () => {
   const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
   const v = JSON.parse(read('package.json')).version;

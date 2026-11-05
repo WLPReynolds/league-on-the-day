@@ -85,6 +85,9 @@ export function zones(y, tier, n) {
     if (tier === 3) z.down = 3;
     if (tier === 4) z.down = 1;
   }
+  if (tier === 5 && y === 2019) z.down = 3; // curtailed; decided on points per game
+  if (tier === 5 && y === 2020) z.down = 0; // National League North/South voided
+  if (tier === 5 && y === 2021) z.down = 3; // 23 clubs
   return euro(z, y, tier);
 }
 
