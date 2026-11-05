@@ -84,6 +84,7 @@ export const DEDUCTIONS = [
   ['2021/2022', 'Derby County', -12, '2021-09-22', 'entering administration'],
   ['2021/2022', 'Derby County', -9, '2021-11-16', 'breaching profit and sustainability rules'],
   ['2021/2022', 'Reading', -6, '2021-11-17', 'breaching profit and sustainability rules'],
+  ['2021/2022', 'Dover Athletic', -12, 'start', 'not completing the 2020/21 season'],
   ['2022/2023', 'Wigan Athletic', -3, '2023-03-21', 'late payment of wages'],
   ['2022/2023', 'Reading', -6, '2023-04-04', 'breaching the agreed business plan'],
   ['2023/2024', 'Wigan Athletic', -8, 'start', 'late payment of wages'],

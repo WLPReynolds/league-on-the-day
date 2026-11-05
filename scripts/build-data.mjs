@@ -85,12 +85,15 @@ const EVENTS = {
     note: 'Wigan Borough resigned in October 1931 and their record was expunged.' }],
   '1961/1962': [{ type: 'expunge', team: 'Accrington Stanley', date: 19620306,
     note: 'Accrington Stanley resigned in March 1962 and their record was expunged.' }],
+  '2020/2021': [{ type: 'expunge', team: 'Dover Athletic', date: 20210326,
+    note: 'Dover Athletic stopped playing in January 2021; their National League record was expunged on 26 March 2021.' }],
 };
 
 // Plain notes shown with a season's tables.
 const NOTES = {
   '1939/1940': ['The 1939/40 season was abandoned after three games when war was declared.'],
-  '2019/2020': ['The 2019/20 season was curtailed by Covid-19. League One and League Two final positions were decided on points per game, so the final tables here (by points) differ from the official ones.'],
+  '2019/2020': ['The 2019/20 season was curtailed by Covid-19. League One, League Two and National League final positions were decided on points per game, so the final tables here (by points) differ from the official ones.'],
+  '2020/2021': ['No club was relegated from the National League in 2020/21, as the National League North and South seasons were declared void.'],
 };
 
 /** season label -> array of { date, division, tier, home, away, hg, ag } */
@@ -143,6 +146,61 @@ for (const r of parseCsv(readFileSync(nonLeagueCsv, 'utf8'))) {
   n2++;
 }
 if (fixedDates) console.log(`Non-league: moved ${fixedDates} matches dated a year late back a year`);
+
+// National League from 2019/20: football-data.co.uk (engsoccerdata stops at 2018/19).
+// Files are data-raw/fd/EC_yyyy.csv (e.g. EC_2627.csv), downloaded by scripts/fetch-data.sh.
+// Its club names are short forms; FD_NAMES maps them to the names used everywhere else.
+// The mapping was built by matching 2005/06–2018/19 fixtures (date and score) against
+// engsoccerdata, where 7,282 of 7,284 agreed.
+const FD_FROM = 2019;
+const FD_NAMES = {
+  'Aldershot': 'Aldershot Town', 'Boston Utd': 'Boston United', 'Carlisle': 'Carlisle United',
+  'Dag and Red': 'Dagenham and Redbridge', 'Dorking': 'Dorking Wanderers', 'Ebbsfleet': 'Ebbsfleet United',
+  'Forest Green': 'Forest Green Rovers', 'Fylde': 'AFC Fylde', 'Grimsby': 'Grimsby Town',
+  'Halifax': 'FC Halifax Town', 'Harrogate': 'Harrogate Town', 'Hartlepool': 'Hartlepool United',
+  'Hornchurch': 'AFC Hornchurch', 'Kidderminster': 'Kidderminster Harriers', "King's Lynn": "King's Lynn Town",
+  'Maidenhead': 'Maidenhead United', 'Maidstone': 'Maidstone United', 'Oldham': 'Oldham Athletic',
+  'Scunthorpe': 'Scunthorpe United', 'Southend': 'Southend United', 'Stockport': 'Stockport County',
+  'Sutton': 'Sutton United', 'Torquay': 'Torquay United', 'Truro': 'Truro City', 'Yeovil': 'Yeovil Town',
+  'York': 'York City', 'Chesterfield': 'Chesterfield', 'Wrexham': 'Wrexham', 'Notts County': 'Notts County',
+  'Salford': 'Salford City', 'Macclesfield': 'Macclesfield Town', 'Bromley': 'Bromley', 'Barnet': 'Barnet',
+  'Telford United': 'AFC Telford United', 'Tranmere': 'Tranmere Rovers', 'Mansfield': 'Mansfield Town',
+  'Morecambe': 'Morecambe', 'Rochdale': 'Rochdale', 'Gateshead': 'Gateshead', 'Solihull': 'Solihull', 'Worthing': 'Worthing',
+};
+const fdDir = join(dirname(nonLeagueCsv), 'fd');
+const fdKnown = new Set([...bySeason.values()].flat().flatMap((m) => [m.home, m.away]));
+const fdUnmatched = new Set();
+const fdName = (raw) => {
+  const n = raw.replace(/\u2019|\uFFFD|\x92/g, "'").trim(); // apostrophe arrives in Windows-1252
+  if (FD_NAMES[n]) return FD_NAMES[n];
+  if (fdKnown.has(n)) return n;
+  // A new club in the division: use the one existing club whose name starts with this one.
+  const longer = [...fdKnown].filter((k) => k.startsWith(`${n} `));
+  if (longer.length === 1) return longer[0];
+  fdUnmatched.add(n);
+  return n;
+};
+let n3 = 0;
+for (let y = FD_FROM; ; y++) {
+  const code = `${String(y % 100).padStart(2, '0')}${String((y + 1) % 100).padStart(2, '0')}`;
+  let text;
+  try { text = readFileSync(join(fdDir, `EC_${code}.csv`), 'latin1'); } catch { break; }
+  for (const r of parseCsv(text.replace(/^\uFEFF|^\xEF\xBB\xBF/, ''))) {
+    if (!r.HomeTeam || !r.Date || r.FTHG === '' || r.FTHG === undefined) continue;
+    const [dd, mm, yy] = r.Date.split('/').map((v) => parseInt(v, 10));
+    const year = yy < 100 ? 2000 + yy : yy;
+    add(seasonLabel(y), {
+      date: year * 10000 + mm * 100 + dd,
+      division: nonLeagueName('conference', y),
+      tier: 5,
+      home: fdName(r.HomeTeam), away: fdName(r.AwayTeam),
+      hg: parseInt(r.FTHG, 10), ag: parseInt(r.FTAG, 10),
+    });
+    n3++;
+  }
+}
+if (fdUnmatched.size) console.log(`National League: club names not matched to an existing club: ${[...fdUnmatched].join(', ')}`);
+console.log(`National League from football-data.co.uk: ${n3} matches`);
 
 const outDir = join(root, 'data');
 rmSync(join(outDir, 'seasons'), { recursive: true, force: true });

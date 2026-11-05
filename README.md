@@ -15,6 +15,7 @@ Opens on Manchester City by default. Below the summary, four views:
 |---|---|---|
 | 1–4 | 1888/89 to now | [Sean Elvidge, England-football-results](https://github.com/seanelvidge/England-football-results) (built on engsoccerdata) |
 | 5 | 1999/00 – 2018/19 | [James Curley, engsoccerdata](https://github.com/jalapic/engsoccerdata) |
+| 5 | 2019/20 – now | [football-data.co.uk](https://www.football-data.co.uk/englandm.php) (club names mapped in `scripts/build-data.mjs`) |
 | 6 (North/South) | 2012/13 – 2018/19 | engsoccerdata |
 
 Tables are calculated from results using the rules of the time: 2 points for a win until 1980/81, goal average until 1975/76 then goal difference. Points deductions (`scripts/deductions.mjs`) apply from the day they were imposed, including changes on appeal; where the date isn't known they apply to the final table only. Tiers 1–4 are covered in full (pre-1996 from a single source), tier 5 in part. Expunged records (Wigan Borough 1931, Accrington Stanley 1962) and Leeds City's 1919 takeover by Port Vale are applied from the date they happened.
