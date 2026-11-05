@@ -5,7 +5,7 @@ import {
 } from './league.js';
 import { seasonChart, historyChart } from './charts.js';
 
-export const APP_VERSION = '1.0.9';
+export const APP_VERSION = '1.0.10';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -612,6 +612,11 @@ els.table.addEventListener('click', (e) => {
   state.division = null;
   show().catch(fail);
   window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+$('today').addEventListener('click', () => {
+  els.date.value = todayIso();
+  state.division = null;
+  show().catch(fail);
 });
 els.summary.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-goto]');
