@@ -2,10 +2,10 @@ import {
   buildTable, lastResult, teamDivision, seasonForDate, seasonNotes,
   toDateNum, dateNumToIso, ordinal, tieBreaker, positionTimeline, teamMatches, netAdjustment,
   divisionFinished, zoneLines,
-} from './league.js?v=1.0.13';
-import { seasonChart, historyChart } from './charts.js?v=1.0.13';
+} from './league.js?v=1.0.14';
+import { seasonChart, historyChart } from './charts.js?v=1.0.14';
 
-export const APP_VERSION = '1.0.13';
+export const APP_VERSION = '1.0.14';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -563,11 +563,13 @@ els.views.addEventListener('click', (e) => {
   writeHash();
   renderView().catch(fail);
 });
-/** Make another club the one in focus, keeping the date and the current view. */
+/** Make another club the one in focus, keeping the date and the current view, and scroll to the top. */
 function switchTeam(name) {
   els.team.value = name;
   state.division = null;
   show().catch(fail);
+  // Back to the top, so the new club's name, date and the view tabs are in sight.
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 for (const el of [els.season, els.results]) {
@@ -619,7 +621,6 @@ els.table.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-team]');
   if (!b) return;
   switchTeam(b.dataset.team);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 $('today').addEventListener('click', () => {
   els.date.value = todayIso();
