@@ -1,6 +1,6 @@
 // Hand-built SVG charts (no libraries, so they work offline). Each builder returns
 // { svg, xs } where xs are the x positions of the pickable points, for tap/drag scrubbing.
-import { tierBands } from './league.js?v=1.0.13';
+import { tierBands } from './league.js?v=1.0.14';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const dayNum = (n) => Date.UTC(Math.floor(n / 10000), Math.floor(n / 100) % 100 - 1, n % 100) / 864e5;
