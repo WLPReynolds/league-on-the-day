@@ -1,18 +1,19 @@
 // Service worker. Online, the page and the results data always come from the network
 // (revalidated, so the browser's own cache can't hand back a stale copy), and are saved for
 // offline use. Offline, the saved copies are used. Scripts and styles carry the version in
-// their URL, so those are served from the saved copy for this version.
-const VERSION = '1.0.10';
+// their URL (?v=), so those are served from the saved copy for this version; anything else
+// is fetched fresh first, so an old saved file can never be mixed with a new page.
+const VERSION = '1.0.11';
 const SHELL = `lotd-shell-${VERSION}`;
 const DATA = 'lotd-data';
 
 const SHELL_FILES = [
   './',
   'index.html',
-  'styles.css?v=1.0.10',
-  'src/app.js?v=1.0.10',
-  'src/league.js',
-  'src/charts.js',
+  'styles.css?v=1.0.11',
+  'src/app.js?v=1.0.11',
+  'src/league.js?v=1.0.11',
+  'src/charts.js?v=1.0.11',
   'manifest.webmanifest',
   'icons/icon.svg',
 ];
@@ -64,5 +65,9 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(networkFirst(e.request, SHELL, './'));
     return;
   }
-  e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
+  if (url.searchParams.has('v')) {
+    e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
+    return;
+  }
+  e.respondWith(networkFirst(e.request, SHELL));
 });
