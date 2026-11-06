@@ -3,17 +3,17 @@
 // offline use. Offline, the saved copies are used. Scripts and styles carry the version in
 // their URL (?v=), so those are served from the saved copy for this version; anything else
 // is fetched fresh first, so an old saved file can never be mixed with a new page.
-const VERSION = '1.0.11';
+const VERSION = '1.0.12';
 const SHELL = `lotd-shell-${VERSION}`;
 const DATA = 'lotd-data';
 
 const SHELL_FILES = [
   './',
   'index.html',
-  'styles.css?v=1.0.11',
-  'src/app.js?v=1.0.11',
-  'src/league.js?v=1.0.11',
-  'src/charts.js?v=1.0.11',
+  'styles.css?v=1.0.12',
+  'src/app.js?v=1.0.12',
+  'src/league.js?v=1.0.12',
+  'src/charts.js?v=1.0.12',
   'manifest.webmanifest',
   'icons/icon.svg',
 ];

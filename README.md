@@ -30,6 +30,8 @@ npm run data   # download the CSVs into data-raw/ and rebuild data/
 
 The build writes `data/index.json` (seasons and clubs), one `data/seasons/YYYY-YYYY.json` per season, and `data/history.json` (every club's final position each season, for the History graph; `npm run build-history` rebuilds just that). A GitHub Action (`.github/workflows/update-data.yml`) does this every morning and commits the data if there are new results; it can also be run by hand from the repo's Actions tab.
 
+The empty `.nojekyll` file tells GitHub Pages to publish the files as they are, skipping its Jekyll build.
+
 ## Develop
 
 ```sh

@@ -2,10 +2,10 @@ import {
   buildTable, lastResult, teamDivision, seasonForDate, seasonNotes,
   toDateNum, dateNumToIso, ordinal, tieBreaker, positionTimeline, teamMatches, netAdjustment,
   divisionFinished, zoneLines,
-} from './league.js?v=1.0.11';
-import { seasonChart, historyChart } from './charts.js?v=1.0.11';
+} from './league.js?v=1.0.12';
+import { seasonChart, historyChart } from './charts.js?v=1.0.12';
 
-export const APP_VERSION = '1.0.11';
+export const APP_VERSION = '1.0.12';
 
 const $ = (id) => document.getElementById(id);
 const els = {
