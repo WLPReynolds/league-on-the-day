@@ -2,10 +2,10 @@ import {
   buildTable, lastResult, teamDivision, seasonForDate, seasonNotes,
   toDateNum, dateNumToIso, ordinal, tieBreaker, positionTimeline, teamMatches, netAdjustment,
   divisionFinished, zoneLines,
-} from './league.js?v=1.0.12';
-import { seasonChart, historyChart } from './charts.js?v=1.0.12';
+} from './league.js?v=1.0.13';
+import { seasonChart, historyChart } from './charts.js?v=1.0.13';
 
-export const APP_VERSION = '1.0.12';
+export const APP_VERSION = '1.0.13';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -425,14 +425,14 @@ function renderResults() {
     <tr class="${mt === current ? 'me' : ''}" data-goto-table="${mt.date}">
       <td class="dt">${shortDate(mt.date)}</td>
       <td class="ha">${mt.venue}</td>
-      <td class="t">${esc(mt.opponent)}</td>
+      <td class="t"><button type="button" class="link" data-team="${esc(mt.opponent)}">${esc(mt.opponent)}</button></td>
       <td class="sc"><span class="res res-${mt.outcome}">${mt.outcome}</span> ${mt.for}–${mt.against}</td>
       <td class="n">${posOn.get(mt.date) ? ordinal(posOn.get(mt.date).pos) : ''}</td>
     </tr>`).join('');
   els.results.innerHTML = `
     <h3 class="divname">${esc(state.team)} ${shortSeason(sd.season)}</h3>
     <p class="sub">${esc(sd.divisions[ownDivision].name)} · P ${matches.length} · W ${tally.W} D ${tally.D} L ${tally.L}.
-      Tap a game for the table that day.</p>
+      Tap a game for the table that day, or a club's name to switch to them.</p>
     <div class="scroll"><table class="results">
       <thead><tr><th class="dt">Date</th><th class="ha"></th><th class="t">Opponent</th><th class="sc">Score</th><th class="n">Pos</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -563,8 +563,18 @@ els.views.addEventListener('click', (e) => {
   writeHash();
   renderView().catch(fail);
 });
+/** Make another club the one in focus, keeping the date and the current view. */
+function switchTeam(name) {
+  els.team.value = name;
+  state.division = null;
+  show().catch(fail);
+}
+
 for (const el of [els.season, els.results]) {
   el.addEventListener('click', (e) => {
+    // An opponent's name in the results list switches to that club, rather than opening the table.
+    const team = e.target.closest('button[data-team]');
+    if (team) { switchTeam(team.dataset.team); return; }
     const t = e.target.closest('[data-goto-table]');
     if (t) goTo(Number(t.dataset.gotoTable), 'table');
   });
@@ -608,9 +618,7 @@ els.divisions.addEventListener('click', (e) => {
 els.table.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-team]');
   if (!b) return;
-  els.team.value = b.dataset.team;
-  state.division = null;
-  show().catch(fail);
+  switchTeam(b.dataset.team);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 $('today').addEventListener('click', () => {
