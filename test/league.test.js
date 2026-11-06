@@ -264,4 +264,12 @@ test('version is the same everywhere', () => {
   assert.match(read('src/app.js'), new RegExp(`APP_VERSION = '${v.replaceAll('.', '\\.')}'`));
   assert.match(read('sw.js'), new RegExp(`VERSION = '${v.replaceAll('.', '\\.')}'`));
   assert.ok(read('index.html').includes(`v${v}`));
+  // Every versioned file reference must carry this version, so a new page never loads an old
+  // saved script (the scripts import each other with ?v= for the same reason).
+  for (const f of ['index.html', 'sw.js', 'src/app.js', 'src/charts.js']) {
+    const refs = read(f).match(/\?v=[0-9.]+/g) || [];
+    for (const r of refs) assert.equal(r, `?v=${v}`, `${f}: ${r}`);
+  }
+  assert.match(read('src/app.js'), /from '\.\/league\.js\?v=/);
+  assert.match(read('src/charts.js'), /from '\.\/league\.js\?v=/);
 });
